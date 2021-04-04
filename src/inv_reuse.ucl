@@ -1,0 +1,18 @@
+module inv {
+   
+    const a : integer = 1;
+    const b : integer = 2;
+    
+    invariant p1 : a < b;
+    invariant p2 : a > b;
+    
+    // Passes the parser but does not generate a node in the AST.
+    invariant p3 : p1 && p2;
+
+    control {
+        v = unroll(0);
+        check;
+        print_results;
+        v.print_cex();
+    }
+}

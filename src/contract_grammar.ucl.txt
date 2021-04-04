@@ -1,0 +1,66 @@
+// This is a brainstorming session on adding the assume-guarantee reasoning in UCLID5.
+//  
+//
+
+module M1 {
+	
+    output _out : integer;
+    
+    // Writing invariants in FOL
+    invariant p1 : ();
+    invariant p2 : ();
+    invariant p3 : ();
+    invariant p4 : ();
+    
+    // Declaring contracts for this module
+    contract view1 : assume_guarantee([p1, p2], [p3, p4]);	// First list: assume, second list: guarantee
+    contract view2 : assume_guarantee(...);
+    contract view3 : assume_guarantee(...);
+    
+    //contract c1 : merge_view(view1, view2, view3);
+}
+
+module M2 {
+	...
+    
+    input _in : integer;
+    
+    contract c1 : assume_guarantee(...);
+}
+
+module M {
+	
+    // Shared variable / wire
+    var shared : integer;
+    
+	instance m1 = M1(_out : (shared));
+    instance m2 = M2(_in : (shared));
+    instance m3 = ...;
+
+	// contract c3 : merge_view(m1.c1, m2.c1);
+    // contract c4 : compose(m1.c2, m2.c2);
+    
+    // We might not want this? This makes "contract" a variable that holds
+    // a contract instance, but we want to emphasize the notion that when
+    // a contract is declared, this module IMPLEMENTS this contract.
+    // contract composed : compose(m1.c1, m2.c1);
+    
+    // Module M implements this system level contrat.
+    contract system_level_contract : assume_guarantee(...); // Written by expert.
+    
+    control {
+    	//type1 : system level verification
+        prove_contracts(contracts=[system_level_contract]);// prove list of contracts
+        prove_contracts; // All contracts present in the module.
+        ag;
+        prove_by_ag(contracts=[system_level_contract]);
+        
+        //type2 : composition of specific instances  
+    	prove_contracts(components=[m1, m2], contracts=[system_level_contract]);
+        
+        // [OUT-OF-SCOPE] type3 : composition of specific contracts in instances
+    	prove_contracts([m1.c1, m2.c1], system_level_contract);
+        prove_contracts(composed, system_level_contract);
+        prove_contracts(merge(compose(m1.c1, m2.c1), m_view1), system_level_contract);
+    }
+}
