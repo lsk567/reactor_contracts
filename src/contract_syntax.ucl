@@ -64,7 +64,7 @@ module M {
         v2 = prove_contracts[contracts=[system_level_contract2]];
         // Check if the composition of *specified* components satisfies *all* contracts.
         prove_contracts[components=[m1, m2]];
-        // Check if the composition of *specified* components *satisfies* specified contracts. 
+        // Check if the composition of *specified* components satisfies *specified* contracts. 
     	prove_contracts[components=[m1, m2], contracts=[system_level_contract]];
     }
 }
