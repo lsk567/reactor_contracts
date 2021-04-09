@@ -7,10 +7,10 @@ module inv {
     invariant p2 : a > b;
     
     // Passes the parser but does not generate a node in the AST.
-    invariant p3 : p1 && p2;
+    // invariant p3 : p1 && p2;
 
     control {
-        v = unroll(0);
+        v = unroll[properties="p1"];
         check;
         print_results;
         v.print_cex();

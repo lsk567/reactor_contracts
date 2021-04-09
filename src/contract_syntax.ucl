@@ -1,0 +1,70 @@
+// The proposed syntax for assume-guarantee contracts in UCLID5.
+
+module M1 {
+	
+    output _out : integer;
+    
+    // Writing invariants in FOL
+    define p1()
+    define p2()
+    define p3()
+    define p4()
+    
+    // Declaring contracts for this module.
+    // Contracts in the same module represent different viewpoints on the same component.
+    contract view1 : assume_guarantee([p1, p2], [p3, p4]);	// First list: assume, second list: guarantee
+    contract view2 : assume_guarantee(...);
+    contract view3 : assume_guarantee(...);
+
+    // Verify contracts at the level of M1
+    control {
+        // prove_contracts does 2 things here (at the base level):
+        // 1. It merges all the contracts that belong to M1
+        // 2. It checks whether the guarantees hold, given the assumptions hold.
+        v = prove_contracts;
+        check;
+        print_results;
+    }
+}
+
+module M2 {
+	
+    input _in : integer;
+    
+    define p5 : integer = ...;
+    define p6 : integer = ...;
+
+    contract view1 : assume_guarantee([p5], [p6]);
+
+    control {
+        v = prove_contracts;
+        check;
+        print_results;
+    }
+}
+
+module M {
+	
+    // Shared variable / wire
+    var shared : integer;
+    
+	instance m1 = M1(_out : (shared));
+    instance m2 = M2(_in : (shared));
+    
+    // Module M implements this system level contrat.
+    contract system_level_contract1 : assume_guarantee(...); // Written by expert.
+    contract system_level_contract2 : assume_guarantee(...); // Written by expert.
+    contract system_level_contract3 : assume_guarantee(...); // Written by expert.
+    
+    control {
+        // Check if the composition of *all* components satisfies *all* contracts.
+        prove_contracts; 
+        // Check if the composition of *all* components satisfies *specified* contracts.
+        v1 = prove_contracts[contracts=[system_level_contract1]];
+        v2 = prove_contracts[contracts=[system_level_contract2]];
+        // Check if the composition of *specified* components satisfies *all* contracts.
+        prove_contracts[components=[m1, m2]];
+        // Check if the composition of *specified* components *satisfies* specified contracts. 
+    	prove_contracts[components=[m1, m2], contracts=[system_level_contract]];
+    }
+}
