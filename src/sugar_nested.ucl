@@ -17,6 +17,9 @@ module m {
         b' = b + 1;
     }
 
+    // Note: This is only a toy example. The component has
+    // no IO ports. Therefore, the contracts are not meaningful
+    // for higher level components.
     // contract C : assume_guarantee((A(a, b)), (G(a,b)));
     // Need a pass to transpile into the following:
     property C : A(a, b) ==> G(a, b);
@@ -37,13 +40,31 @@ module M {
     instance m1 : m();
     instance m2 : m();
 
+    define A() : boolean = true;
+    define G() : boolean = true;
+
+    // In order for the high-level module to respect contract
+    // composition, we need to restrict how it is written.
+    // For example, if only either of m1 and m2 steps, then
+    // the composition does not respect the semantics of
+    // contract composition.
     next {
         next(m1);
         next(m2);
     }
 
+    // contract C : assume_guarantee((A()), (G()));
+    // Two questions:
+    // 1. How to express composition of m1 and m2's contracts?
+    define G_m1_m2() : boolean = (m1.a < m1.b && m2.a < m2.b);
+    define A_m1_m2() : boolean = ((m1.a == 1) && (m2.a == 1)) || !G_m1_m2();
+
+    // 2. How to check the composed contract satisfy the system-level contract?
+    property A_is_refinement : A() ==> A_m1_m2();
+    property G_is_refinement : G_m1_m2() ==> G();
+
     control {
-        induction;
+        v = induction;
         print_module;
         check;
         print_results;
