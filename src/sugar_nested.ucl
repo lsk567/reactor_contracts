@@ -1,0 +1,53 @@
+module m {
+    
+    var a : integer;
+    var b : integer;
+
+    // Sub-formulas
+    define A(a : integer, b : integer) : boolean
+    = a == 1;
+    define G(a : integer, b : integer) : boolean
+    = a < b;
+
+    init {
+        b = 2;
+    }
+
+    next {
+        b' = b + 1;
+    }
+
+    // contract C : assume_guarantee((A(a, b)), (G(a,b)));
+    // Need a pass to transpile into the following:
+    property C : A(a, b) ==> G(a, b);
+
+    control {
+        print_module;
+        // prove_contracts;
+        v = induction;
+
+        check;
+        print_results;
+        v.print_cex;
+    }
+}
+
+module M {
+    
+    instance m1 : m();
+    instance m2 : m();
+
+    next {
+        next(m1);
+        next(m2);
+    }
+
+    control {
+        induction;
+        print_module;
+        check;
+        print_results;
+    }
+}
+
+
