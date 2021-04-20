@@ -1,0 +1,133 @@
+module m1 {
+    
+    input a : integer;
+    output b : integer;
+
+    // Sub-formulas
+    define A(a : integer, b : integer) : boolean
+    = a < 0;
+    define G(a : integer, b : integer) : boolean
+    = b > 0;
+
+    init {
+        b = a * -1;
+    }
+
+    next {
+        b' = a' * -1;
+    }
+
+    contract C : assume_guarantee((A(a, b)), (G(a,b)));
+    contract C2 : assume_guarantee(a > -5, b < 5);
+    // Need a pass to transpile into the following:
+    // property C : A(a, b) ==> G(a, b);
+
+    control {
+        print_module;
+        //ssag[contracts=[C]];
+        v = ag;
+        //v = induction;
+
+        check;
+        print_results;
+        v.print_cex;
+    }
+}
+
+module m2 {
+    
+    input a : integer;
+    output b : integer;
+
+    // Sub-formulas
+    define A(a : integer, b : integer) : boolean
+    = true;
+    define G(a : integer, b : integer) : boolean
+    = b == a + 1;
+
+    init {
+        b = a + 1;
+    }
+
+    next {
+        b' = a' + 1;
+    }
+
+    contract C : assume_guarantee((A(a, b)), (G(a,b)));
+    // Need a pass to transpile into the following:
+    // property C : A(a, b) ==> G(a, b);
+
+    control {
+        print_module;
+        ag;
+        //v = induction;
+
+        //check;
+        //print_results;
+        //v.print_cex;
+    }
+}
+
+module M {
+    
+    input a : integer;
+    output b : integer;
+    var wire : integer;
+
+    instance _m1 : m1(a : (a), b : (wire));
+    instance _m2 : m2(a : (wire), b : (b));
+
+    // Expected valid
+    // define A() : boolean = true;
+    // define G() : boolean = true;
+
+    // Expected invalid.
+    // define A() : boolean = a < 0;
+    // define G() : boolean = b > 2;
+
+    // Expected valid
+     define A() : boolean = a < 0;
+     define G() : boolean = b == -1 * a + 1;
+
+    // Expected invalid
+    // define A() : boolean = a < 0;
+    // define G() : boolean = b == -1 * a;
+
+    init {
+        wire = 0;
+    }
+
+    // In order for the high-level module to respect contract
+    // composition, we need to restrict how it is written.
+    // For example, if only either of m1 and m2 steps, then
+    // the composition does not respect the semantics of
+    // contract composition.
+    next {
+        next(_m1);
+        next(_m2);
+    }
+
+    contract C : assume_guarantee((A()), (G()));
+    contract C2 : assume_guarantee(a > (-5), b < 6);
+    // Two questions:
+    // 1. How to express composition of m1 and m2's contracts?
+    // define G_m1_m2() : boolean = (_m1.b > 0 && _m2.b == _m2.a + 1);
+    // define A_m1_m2() : boolean = ((_m1.a < 0) && (true)) || !G_m1_m2();
+    // define G_m1_m2() : boolean = (wire > 0 && b == wire + 1);
+    // define A_m1_m2() : boolean = ((a < 0) && (true)) || !G_m1_m2();
+
+    // 2. How to check the composed contract satisfy the system-level contract?
+    // property A_is_refinement : A() ==> A_m1_m2();
+    // property G_is_refinement : G_m1_m2() ==> G();
+
+    control {
+        print_module;
+        ag[contracts=[C, C2]];
+        //ag;
+        //v = induction;
+        check;
+        print_results;
+        //v.print_cex;
+    }
+}
+
