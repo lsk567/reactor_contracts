@@ -122,12 +122,13 @@ module M {
 
     control {
         print_module;
-        ag[contracts=[C, C2]];
+        v = ag[contracts=[C, C2]];
         //ag;
         //v = induction;
         check;
         print_results;
-        //v.print_cex;
+        v.print_cex;
+        //print_module;
     }
 }
 
