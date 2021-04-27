@@ -1,0 +1,160 @@
+module Startup {
+    input tag_g1: integer; 
+    input tag_g2: integer;
+    output startup_trigger : boolean ;
+
+    define A() : boolean = true;
+    define G() : boolean = (startup_trigger) <==> (tag_g1 == 0 && tag_g2 == 0);    
+    contract C : assume_guarantee(A(), G());
+}
+
+module Reaction_Controller {
+    input startup_trigger : boolean;
+    output out_present: boolean;
+    output out_value: boolean;
+
+    define A() : boolean = true;
+    define G() : boolean = ((startup_trigger) ==> (out_present && out_value)) && (!(startup_trigger) ==> !(out_present));
+    contract C : assume_guarantee(A(), G());
+}
+
+module Reaction_Vision {
+    input in_trigger : boolean;
+    input in_value: boolean;
+    output out_present: boolean;
+    output out_value: boolean;
+
+    input ramp_exists: boolean;
+
+    define A() : boolean = true;
+    define G() : boolean = ((in_trigger) ==> (ramp_exists ==> ((out_value == in_value) && out_present)));
+    contract C : assume_guarantee(A(), G());    
+}
+
+module Reaction_Door {
+    input in_trigger : boolean;
+    input in_value: boolean;
+
+    output door_state: boolean;
+
+    define A() : boolean = true;
+    define G() : boolean = ((in_trigger) ==> (door_state == in_value));   
+    contract C : assume_guarantee(A(), G());  
+}
+
+module Contoller_Outport {
+    input in1: boolean;
+    input in2: boolean;
+    output out1: boolean;
+    output out2: boolean;
+
+    define A() : boolean = true;
+    define G() : boolean = ((out1 == in1) && (out2 == in2)); 
+    contract C : assume_guarantee(A(), G());   
+}
+
+module Vision_Inport {
+    input in1: boolean;
+    input in2: boolean;
+    output out1: boolean;
+    output out2: boolean;
+
+    define A() : boolean = true;
+    define G() : boolean = ((out1 == in1) && (out2 == in2)); 
+    contract C : assume_guarantee(A(), G());
+}
+
+module Vision_Outport {
+    input in1: boolean;
+    input in2: boolean;
+    output out1: boolean;
+    output out2: boolean;
+
+    define A() : boolean = true;
+    define G() : boolean = ((out1 == in1) && (out2 == in2));  
+    contract C : assume_guarantee(A(), G());
+}
+
+module Door_Inport {
+    input in1: boolean;
+    input in2: boolean;
+    output out1: boolean;
+    output out2: boolean;
+
+    define A() : boolean = true;
+    define G() : boolean = ((out1 == in1) && (out2 == in2));   
+    contract C : assume_guarantee(A(), G());
+}
+
+module M {
+    
+    input tag_1 : integer;
+    input tag_2 : integer;
+    input start: boolean;
+
+    input ramp: boolean;
+    var wire1 : boolean; 
+    var wire2 : boolean;
+    var controller_out_present : boolean;
+    var controller_out_value : boolean;
+    var vision_in_present : boolean;
+    var vision_in_value : boolean;
+
+    var wire3 : boolean;
+    var wire4 : boolean;
+    var vision_out_present : boolean;
+    var vision_out_value : boolean;
+    var door_in_present : boolean;
+    var door_in_value : boolean;
+
+    output ret: boolean;
+
+    instance startup : Startup(tag_g1 : (tag_1), tag_g2 : (tag_2), startup_trigger: (start));
+
+    instance reaction_Controller : Reaction_Controller(startup_trigger : (start), out_present : (wire1), out_value: (wire2));
+    instance contoller_Outport : Contoller_Outport(in1: (wire1), in2: (wire2), out1: (controller_out_present), out2: (controller_out_value));
+    instance vision_Inport : Vision_Inport(in1: (controller_out_present), in2: (controller_out_value), out1: (vision_in_present), out2: (vision_in_value));
+    instance reaction_Vision : Reaction_Vision(in_trigger : (vision_in_present), in_value : (vision_in_value), out_present: (wire3), out_value: (wire4), ramp_exists: (ramp));
+    instance vision_Outport : Vision_Outport(in1: (wire3), in2: (wire4), out1: (vision_out_present), out2: (vision_out_value));
+    instance door_Inport : Door_Inport(in1: (vision_out_present), in2: (vision_out_value), out1: (door_in_present), out2: (door_in_value));
+    instance reaction_Door : Reaction_Door(in_trigger : (door_in_present), in_value : (door_in_value), door_state: (ret));
+
+    // Expected invalid
+    define A() : boolean = true;
+    define G() : boolean = (start) ==> (ret);
+
+    // Expected valid
+    //define A() : boolean = ramp;
+    //define G() : boolean = (start) ==> (ret);
+
+    init {
+    }
+
+    // In order for the high-level module to respect contract
+    // composition, we need to restrict how it is written.
+    // For example, if only either of m1 and m2 steps, then
+    // the composition does not respect the semantics of
+    // contract composition.
+    next {
+        next(startup);
+        next(reaction_Controller);
+        next(contoller_Outport);
+        next(vision_Inport);
+        next(reaction_Vision);
+        next(vision_Outport);
+        next(door_Inport);
+        next(reaction_Door);
+    }
+
+    contract C : assume_guarantee((A()), (G()));
+
+    control {
+        print_module;
+        v = ag;
+        //v = induction;
+        check;
+        print_results;
+        v.print_cex;
+    }
+}
+
