@@ -17,19 +17,21 @@ module m1 {
         b' = a' * -1;
     }
 
-    //contract C : assume_guarantee((A(a, b)), (G(a,b)));
+    contract C : assume_guarantee((A(a, b)), (G(a,b)));
     // Need a pass to transpile into the following:
+    // property C : A(a, b) ==> G(a, b);
     // property C : A(a, b) ==> G(a, b);
 
     control {
         print_module;
-        //prove_by_contracts[contracts=[C]];
+        ag;
+        // ag[contracts=[C]];
         //prove_by_contracts;
-        //v = induction;
+        // v = induction;
 
-        //check;
-        //print_results;
-        //v.print_cex;
+        check;
+        print_results;
+        // v.print_cex;
     }
 }
 
@@ -58,7 +60,7 @@ module m2 {
 
     control {
         print_module;
-        prove_by_contracts;
+        ag;
         //v = induction;
 
         //check;
@@ -106,6 +108,8 @@ module M {
         next(_m2);
     }
 
+    property test : (1 < (2 * 100) ==> false) && (false || true);
+
     contract C : assume_guarantee((A()), (G()));
     // Two questions:
     // 1. How to express composition of m1 and m2's contracts?
@@ -120,7 +124,7 @@ module M {
 
     control {
         print_module;
-        prove_by_contracts;
+        ag;
         //v = induction;
         //check;
         //print_results;

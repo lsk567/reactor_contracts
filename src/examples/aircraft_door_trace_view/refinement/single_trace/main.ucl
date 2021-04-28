@@ -1,0 +1,224 @@
+// TODO: 1. Merge all trace types
+//       2. Try encoding guarantees using assume()
+// 
+// Note: 1. Anything that uses in_trace does not work.
+
+module main {
+    
+    type    * = common.*;
+    define  * = common.*;
+    const   * = common.*;
+
+    // Trace declaration and axioms
+    var trace : trace_t;
+
+    // Display trace in timestamp order
+    axiom(forall (i, j : integer) :: (i < j && in_range(i) && in_range(j)) 
+        ==> (tag_earlier(g(elem(i)), g(elem(j)))
+            || tag_same(g(elem(i)), g(elem(j)))));
+
+    // NULL events should appear in the suffix
+    axiom(forall (j : integer) :: in_range(j) ==> (
+        (p1(elem(j)) != NULL) ==> (forall (i : integer) :: in_range(i) ==> 
+        ((i < j) ==> p1(elem(i)) != NULL)
+    )));
+
+    // Startup must be the first element.
+    /*
+    axiom(forall (i : integer) :: in_range(i) ==> (
+        (p1(elem(i)) == STARTUP)
+            ==> (i == 0)
+    ));
+    */
+
+    // All tags should be positive
+    axiom(forall (i : integer) :: in_range(i) ==> (
+        !tag_earlier(g(elem(i)), zero())
+    ));
+
+    // Display simulatenous elements in certain order
+    /*
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == STARTUP
+            && p1(elem(j)) == A1)
+        ==> i < j
+    ));
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == A1
+            && p1(elem(j)) == A_out)
+        ==> i < j
+    ));
+    */
+
+    // Element helper that shortens property
+    define elem(i : integer) : element_t
+    = get(trace, i);
+
+    // Helper predicates
+    define phi_0(e : element_t) : boolean
+    // = p1(e) == STARTUP && g(e) == zero(); 
+    = p1(e) == STARTUP; 
+
+    define phi_1(e : element_t) : boolean
+    = p1(e) == A1;
+
+    define phi_2p(e : element_t) : boolean
+    = true;
+
+    define phi_2q(e : element_t) : boolean
+    = exists (_i : integer) :: in_range(_i)
+        && p1(elem(_i)) == A_out
+        && v(elem(_i)) == true
+        && g(elem(_i)) == g(e);
+
+    define phi_2(e : element_t) : boolean
+    = phi_2p(e) ==> phi_2q(e);
+
+    define phi_3(e : element_t) : boolean
+    = forall (_i : integer) :: in_range(_i)
+        ==> ((
+            p1(elem(_i)) == A_out
+            && g(elem(_i)) == g(e)
+        ) ==> (
+            exists (_j : integer) :: (
+                p1(elem(_j)) == B_in
+                && v(elem(_i)) == v(elem(_j))
+                && g(elem(_i)) == g(elem(_j))
+            )
+        ));
+
+    define phi_4(e : element_t) : boolean
+    = p1(e) == B1;
+
+    define phi_5p(e : element_t) : boolean
+    = exists (_i : integer) :: in_range(_i)
+        && p1(elem(_i)) == B_ramp_exists
+        && v(elem(_i)) == true
+        && g(elem(_i)) == g(e);
+
+    define phi_5q(e : element_t) : boolean
+    = forall (_i : integer) :: in_range(_i)
+        ==> ((
+            p1(elem(_i)) == B_in
+            && g(elem(_i)) == g(e)
+        ) ==> (
+            exists (_j : integer) :: (
+                p1(elem(_j)) == B_out
+                && v(elem(_i)) == v(elem(_j))
+                && g(elem(_i)) == g(elem(_j))
+            )
+        ));
+
+    define phi_5(e : element_t) : boolean
+    = phi_5p(e) ==> phi_5q(e);
+
+    // Note: elements in the trace already represent "present" values
+    define phi_6(e : element_t) : boolean
+    = p1(e) == B_in;
+
+    define phi_7(e : element_t) : boolean
+    = forall (_i : integer) :: in_range(_i)
+        ==> ((
+            p1(elem(_i)) == B_out
+            && g(elem(_i)) == g(e)
+        ) ==> (
+            exists (_j : integer) :: (
+                p1(elem(_j)) == C_in
+                && v(elem(_i)) == v(elem(_j))
+                && g(elem(_i)) == g(elem(_j))
+            )
+        ));
+
+    define phi_8(e : element_t) : boolean
+    = p1(e) == C1;
+
+    define phi_9p(e : element_t) : boolean
+    = true; 
+
+    define phi_9q(e : element_t) : boolean
+    = forall (_i : integer) :: in_range(_i)
+        ==> ((
+            p1(elem(_i)) == C_in
+            && g(elem(_i)) == g(e)
+        ) ==> (
+            exists (_j : integer) :: (
+                p1(elem(_j)) == C_s
+                && v(elem(_i)) == v(elem(_j))
+                && g(elem(_i)) == g(elem(_j))
+            )
+        ));
+
+    define phi_9(e : element_t) : boolean
+    = phi_9p(e) ==> phi_9q(e);
+
+    define phi_10(e : element_t) : boolean
+    = p1(e) == C_in;
+
+
+    // Contract formulae
+    define Sys_spec() : boolean
+    = exists (x : integer) :: in_range(x)
+        && !tag_earlier(g(elem(x)), zero())
+        && p1(elem(x)) == C_s
+        && v(elem(x)) == true;
+
+    define G1() : boolean
+    = forall (v : integer) :: in_range(v)
+        ==> (!(exists (u : integer) :: in_range(u)
+                && tag_earlier(g(elem(u)), g(elem(v))))
+            <==> phi_0(elem(v)));
+
+    define G2() : boolean
+    = forall (u : integer) :: in_range(u+1)
+        ==> ((phi_0(elem(u)) ==> (exists (v : integer) ::
+                in_range(v)
+                && tag_same(g(elem(v)), g(elem(u))) // FIXME: revise formalism
+                && phi_1(elem(v)))) 
+            && (phi_1(elem(u)) ==> phi_2(elem(u))) 
+    );
+
+    define G3() : boolean
+    = forall (u : integer) :: in_range(u) ==>
+        (phi_3(elem(u)));
+
+    define G4() : boolean
+    = forall (u : integer) :: in_range(u)
+        ==> ((phi_6(elem(u)) ==> (exists (v : integer) ::
+                in_range(v)
+                && tag_earlier(g(elem(u)), g(elem(v))) 
+                && phi_4(elem(v)))) 
+            && (phi_4(elem(u)) ==> phi_5(elem(u))) 
+    );
+
+    define G5() : boolean
+    = forall (u : integer) :: in_range(u) ==>
+        (phi_7(elem(u)));
+
+    define G6() : boolean
+    = forall (u : integer) :: in_range(u)
+        ==> ((phi_10(elem(u)) ==> (exists (v : integer) ::
+                in_range(v)
+                && tag_earlier(g(elem(u)), g(elem(v))) 
+                && phi_8(elem(v)))) 
+            && (phi_8(elem(u)) ==> phi_9(elem(u))) 
+    );
+
+    // Instead of putting guarantees in assume(),
+    // put them in implication form.
+    // More constrained proposition (system spec) implies
+    // less constrained propsition.
+    property refine_G : 
+    (
+        G1() && G2() && G3() && G4() && G5() && G6()
+    )
+    ==> Sys_spec(); 
+
+    control {
+        v = unroll(0);
+        check;
+        print_results;
+        v.print_cex;
+    }
+}
