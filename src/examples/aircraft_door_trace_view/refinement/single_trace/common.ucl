@@ -60,12 +60,11 @@ module common {
     define tag_later(t1 : tag_t, t2 : tag_t) : boolean
     = if (pi5(base_tag(t1)) > pi5(base_tag(t2))
         || (pi5(base_tag(t1)) == pi5(base_tag(t2)) && pi2(t1) > pi2(t2))
-        || (!isInf(t1) && isInf(t2)))
+        || (isInf(t1) && !isInf(t2)))
         then true else false;
 
     define tag_same(t1 : tag_t, t2 : tag_t) : boolean
     = if (base_tag(t1) == base_tag(t2)
-        // || (isInf(t1) && isInf(t2))
         ) then true else false;
 
     define tag_earlier(t1 : tag_t, t2 : tag_t) : boolean
@@ -133,7 +132,7 @@ module common {
     define p1(e : element_t) : id_t     = e._1;
     define p2(e : element_t) : value_t  = e._2;
     define p3(e : element_t) : tag_t    = e._3;
-    define v(e : element_t) : value_t   = p2(e);
+    define val(e : element_t) : value_t = p2(e);
     define g(e : element_t) : tag_t     = p3(e);
 
     // Helper Predicates

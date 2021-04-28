@@ -1,8 +1,3 @@
-// TODO: 1. Merge all trace types
-//       2. Try encoding guarantees using assume()
-// 
-// Note: 1. Anything that uses in_trace does not work.
-
 module main {
     
     type    * = common.*;
@@ -23,21 +18,12 @@ module main {
         ((i < j) ==> p1(elem(i)) != NULL)
     )));
 
-    // Startup must be the first element.
-    /*
-    axiom(forall (i : integer) :: in_range(i) ==> (
-        (p1(elem(i)) == STARTUP)
-            ==> (i == 0)
-    ));
-    */
-
     // All tags should be positive
     axiom(forall (i : integer) :: in_range(i) ==> (
         !tag_earlier(g(elem(i)), zero())
     ));
 
     // Display simulatenous elements in certain order
-    /*
     axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
         (tag_same(g(elem(i)), g(elem(j)))
             && p1(elem(i)) == STARTUP
@@ -50,7 +36,45 @@ module main {
             && p1(elem(j)) == A_out)
         ==> i < j
     ));
-    */
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == A_out
+            && p1(elem(j)) == B_in)
+        ==> i < j
+    ));
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == B_in
+            && p1(elem(j)) == B1)
+        ==> i < j
+    ));
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == B1
+            && p1(elem(j)) == B_out)
+        ==> i < j
+    ));
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == B_out
+            && p1(elem(j)) == C_in)
+        ==> i < j
+    ));
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == C_in
+            && p1(elem(j)) == C1)
+        ==> i < j
+    ));
+    axiom(forall (i, j : integer) :: (in_range(i) && in_range(j)) ==> (
+        (tag_same(g(elem(i)), g(elem(j)))
+            && p1(elem(i)) == C1
+            && p1(elem(j)) == C_s)
+        ==> i < j
+    ));
+
+    // FIXME: for every downstream invocation, there needs to be
+    // an upstream trigger.
 
     // Element helper that shortens property
     define elem(i : integer) : element_t
@@ -58,8 +82,7 @@ module main {
 
     // Helper predicates
     define phi_0(e : element_t) : boolean
-    // = p1(e) == STARTUP && g(e) == zero(); 
-    = p1(e) == STARTUP; 
+    = p1(e) == STARTUP && tag_same(g(e), zero()); 
 
     define phi_1(e : element_t) : boolean
     = p1(e) == A1;
@@ -70,8 +93,8 @@ module main {
     define phi_2q(e : element_t) : boolean
     = exists (_i : integer) :: in_range(_i)
         && p1(elem(_i)) == A_out
-        && v(elem(_i)) == true
-        && g(elem(_i)) == g(e);
+        && val(elem(_i)) == true
+        && tag_same(g(elem(_i)), g(e));
 
     define phi_2(e : element_t) : boolean
     = phi_2p(e) ==> phi_2q(e);
@@ -80,34 +103,41 @@ module main {
     = forall (_i : integer) :: in_range(_i)
         ==> ((
             p1(elem(_i)) == A_out
-            && g(elem(_i)) == g(e)
+            && tag_same(g(elem(_i)), g(e))
         ) ==> (
             exists (_j : integer) :: (
                 p1(elem(_j)) == B_in
-                && v(elem(_i)) == v(elem(_j))
-                && g(elem(_i)) == g(elem(_j))
+                && val(elem(_i)) == val(elem(_j))
+                && tag_same(g(elem(_i)), g(elem(_j)))
             )
         ));
 
     define phi_4(e : element_t) : boolean
     = p1(e) == B1;
 
+    // FIXME: how to add env assumption?
     define phi_5p(e : element_t) : boolean
     = exists (_i : integer) :: in_range(_i)
         && p1(elem(_i)) == B_ramp_exists
-        && v(elem(_i)) == true
+        && val(elem(_i)) == true
         && g(elem(_i)) == g(e);
+    // Contract does not care about ramp.
+    // If uncommented, we expect a valid refinement.
+    /*
+    define phi_5p(e : element_t) : boolean
+    = true;
+    */
 
     define phi_5q(e : element_t) : boolean
     = forall (_i : integer) :: in_range(_i)
         ==> ((
             p1(elem(_i)) == B_in
-            && g(elem(_i)) == g(e)
+            && tag_same(g(elem(_i)), g(e))
         ) ==> (
             exists (_j : integer) :: (
                 p1(elem(_j)) == B_out
-                && v(elem(_i)) == v(elem(_j))
-                && g(elem(_i)) == g(elem(_j))
+                && val(elem(_i)) == val(elem(_j))
+                && tag_same(g(elem(_i)), g(elem(_j)))
             )
         ));
 
@@ -122,12 +152,12 @@ module main {
     = forall (_i : integer) :: in_range(_i)
         ==> ((
             p1(elem(_i)) == B_out
-            && g(elem(_i)) == g(e)
+            && tag_same(g(elem(_i)), g(e))
         ) ==> (
             exists (_j : integer) :: (
                 p1(elem(_j)) == C_in
-                && v(elem(_i)) == v(elem(_j))
-                && g(elem(_i)) == g(elem(_j))
+                && val(elem(_i)) == val(elem(_j))
+                && tag_same(g(elem(_i)), g(elem(_j)))
             )
         ));
 
@@ -141,12 +171,12 @@ module main {
     = forall (_i : integer) :: in_range(_i)
         ==> ((
             p1(elem(_i)) == C_in
-            && g(elem(_i)) == g(e)
+            && tag_same(g(elem(_i)), g(e))
         ) ==> (
             exists (_j : integer) :: (
                 p1(elem(_j)) == C_s
-                && v(elem(_i)) == v(elem(_j))
-                && g(elem(_i)) == g(elem(_j))
+                && val(elem(_i)) == val(elem(_j))
+                && tag_same(g(elem(_i)), g(elem(_j)))
             )
         ));
 
@@ -162,21 +192,19 @@ module main {
     = exists (x : integer) :: in_range(x)
         && !tag_earlier(g(elem(x)), zero())
         && p1(elem(x)) == C_s
-        && v(elem(x)) == true;
+        && val(elem(x)) == true;
 
     define G1() : boolean
-    = forall (v : integer) :: in_range(v)
-        ==> (!(exists (u : integer) :: in_range(u)
-                && tag_earlier(g(elem(u)), g(elem(v))))
-            <==> phi_0(elem(v)));
+    = exists (v : integer) :: phi_0(elem(v));
 
     define G2() : boolean
-    = forall (u : integer) :: in_range(u+1)
-        ==> ((phi_0(elem(u)) ==> (exists (v : integer) ::
-                in_range(v)
-                && tag_same(g(elem(v)), g(elem(u))) // FIXME: revise formalism
-                && phi_1(elem(v)))) 
-            && (phi_1(elem(u)) ==> phi_2(elem(u))) 
+    = forall (_u : integer) :: in_range(_u) ==> 
+        (((phi_0(elem(_u))) ==> (exists (_v : integer) ::
+            in_range(_v)
+            && tag_same(g(elem(_v)), g(elem(_u))) // FIXME: why doesn't tag_same work?? Ans: G1() was defined in a strange way.
+            && phi_1(elem(_v))
+            )) 
+        && (phi_1(elem(_u)) ==> phi_2(elem(_u))) 
     );
 
     define G3() : boolean
@@ -184,12 +212,12 @@ module main {
         (phi_3(elem(u)));
 
     define G4() : boolean
-    = forall (u : integer) :: in_range(u)
-        ==> ((phi_6(elem(u)) ==> (exists (v : integer) ::
-                in_range(v)
-                && tag_earlier(g(elem(u)), g(elem(v))) 
-                && phi_4(elem(v)))) 
-            && (phi_4(elem(u)) ==> phi_5(elem(u))) 
+    = forall (_u : integer) :: in_range(_u) ==> 
+        (((phi_6(elem(_u))) ==> (exists (_v : integer) ::
+            in_range(_v)
+            && tag_same(g(elem(_v)), g(elem(_u)))
+            && phi_4(elem(_v)))) 
+        && (phi_4(elem(_u)) ==> phi_5(elem(_u))) 
     );
 
     define G5() : boolean
@@ -197,12 +225,12 @@ module main {
         (phi_7(elem(u)));
 
     define G6() : boolean
-    = forall (u : integer) :: in_range(u)
-        ==> ((phi_10(elem(u)) ==> (exists (v : integer) ::
-                in_range(v)
-                && tag_earlier(g(elem(u)), g(elem(v))) 
-                && phi_8(elem(v)))) 
-            && (phi_8(elem(u)) ==> phi_9(elem(u))) 
+    = forall (_u : integer) :: in_range(_u) ==> 
+        (((phi_10(elem(_u))) ==> (exists (_v : integer) ::
+            in_range(_v)
+            && tag_same(g(elem(_v)), g(elem(_u)))
+            && phi_8(elem(_v)))) 
+        && (phi_8(elem(_u)) ==> phi_9(elem(_u))) 
     );
 
     // Instead of putting guarantees in assume(),
