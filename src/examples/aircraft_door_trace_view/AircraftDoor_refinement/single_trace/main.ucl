@@ -1,3 +1,8 @@
+/**
+ * The assumptions on the environment are assumed to be static
+ * and hold since the beginning of the trace. In some sense,
+ * we can interpret it as static environment.
+ */
 module main {
     
     type    * = common.*;
@@ -119,9 +124,6 @@ module main {
         && val(elem(_i)) == true
         && tag_same(g(elem(_i)), g(e));
 
-    define phi_2(e : element_t) : boolean
-    = phi_2p(e) ==> phi_2q(e);
-
     define phi_3(e : element_t) : boolean
     = forall (_i : integer) :: in_range(_i)
         ==> ((
@@ -143,12 +145,6 @@ module main {
         && p1(elem(_i)) == B_ramp_exists
         && val(elem(_i)) == true
         && !tag_later(g(elem(_i)), g(e));
-    // Contract does not care about ramp.
-    // If uncommented, we expect a valid refinement.
-    /*
-    define phi_5p(e : element_t) : boolean
-    = true;
-    */
 
     define phi_5q(e : element_t) : boolean
     = forall (_i : integer) :: in_range(_i)
@@ -162,9 +158,6 @@ module main {
                 && tag_same(g(elem(_i)), g(elem(_j)))
             )
         ));
-
-    define phi_5(e : element_t) : boolean
-    = phi_5p(e) ==> phi_5q(e);
 
     // Note: elements in the trace already represent "present" values
     define phi_6(e : element_t) : boolean
@@ -202,9 +195,6 @@ module main {
             )
         ));
 
-    define phi_9(e : element_t) : boolean
-    = phi_9p(e) ==> phi_9q(e);
-
     define phi_10(e : element_t) : boolean
     = p1(e) == C_in;
 
@@ -212,15 +202,18 @@ module main {
      * System-Level Contract *
      *************************/
     define Sys_A() : boolean
+    = phi_5p(elem(0));
+
+    define Relaxed_sys_A() : boolean
     = true;
 
-    define Sys_spec() : boolean
+    define Sys_G() : boolean
     = exists (x : integer) :: in_range(x)
         && !tag_earlier(g(elem(x)), zero())
         && p1(elem(x)) == C_s
         && val(elem(x)) == true;
 
-    define Revised_sys_spec() : boolean
+    define Relaxed_sys_G() : boolean
     = (!tag_earlier(g(elem(0)), zero())
         && p1(elem(0)) == B_ramp_exists
         && val(elem(0)) == true)
@@ -240,7 +233,7 @@ module main {
     = exists (v : integer) :: phi_0(elem(v));
 
     define A2() : boolean
-    = true;
+    = phi_2p(elem(0));
     define G2() : boolean
     = forall (_u : integer) :: in_range(_u) ==> 
         (((phi_0(elem(_u))) ==> (exists (_v : integer) ::
@@ -248,7 +241,7 @@ module main {
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_1(elem(_v))
             )) 
-        && (phi_1(elem(_u)) ==> phi_2(elem(_u))) 
+        && (phi_1(elem(_u)) ==> phi_2q(elem(_u))) 
     );
 
     define A3() : boolean
@@ -258,14 +251,14 @@ module main {
         (phi_3(elem(u)));
 
     define A4() : boolean
-    = true;
+    = phi_5p(elem(0));
     define G4() : boolean
     = forall (_u : integer) :: in_range(_u) ==> 
         (((phi_6(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_4(elem(_v)))) 
-        && (phi_4(elem(_u)) ==> phi_5(elem(_u))) 
+        && (phi_4(elem(_u)) ==> phi_5q(elem(_u))) 
     );
 
     define A5() : boolean
@@ -275,32 +268,42 @@ module main {
         (phi_7(elem(u)));
 
     define A6() : boolean
-    = true;
+    = phi_9p(elem(0));
     define G6() : boolean
     = forall (_u : integer) :: in_range(_u) ==> 
         (((phi_10(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_8(elem(_v)))) 
-        && (phi_8(elem(_u)) ==> phi_9(elem(_u))) 
+        && (phi_8(elem(_u)) ==> phi_9q(elem(_u))) 
     );
 
-    // Instead of putting guarantees in assume(),
-    // put them in implication form.
-    // More constrained proposition (system spec) implies
-    // less constrained propsition.
-    property refine_A :
+    /***************************************
+     * Verification by Checking Refinement *
+     ***************************************/
+    define _refine_A() : boolean = 
     Sys_A() ==>
+    // Since Sys_A is more demanding,
+    // using Relaxed_sys_A might not imply the composed A.
+    // Try by commenting out Sys_A and uncommenting the following:
+    // Relaxed_sys_A() ==>
     (
         _A1() && A2() && A3() && A4() && A5() && A6()
     );
 
-    property refine_G : 
+    define _refine_G() : boolean =
     (
         G1() && G2() && G3() && G4() && G5() && G6()
     )
-    // ==> Sys_spec();
-    ==> Revised_sys_spec(); 
+    ==> Sys_G();
+    // Since Sys_spec is more demanding,
+    // the composed G must also satisfy Relaxed_sys_spec.
+    // Try by commenting out Sys_G uncommenting the following:
+    // ==> Relaxed_sys_G(); 
+
+    property refine_A : _refine_A();
+    property refine_G : _refine_G();
+    property refine_C : _refine_A() && _refine_G();
 
     control {
         v = unroll(0);
