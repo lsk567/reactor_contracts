@@ -12,6 +12,10 @@ module main {
         ==> (tag_earlier(g(elem(i)), g(elem(j)))
             || tag_same(g(elem(i)), g(elem(j)))));
 
+    // All microsteps are positive
+    axiom(forall (i : integer) :: in_range(i)
+        ==> pi2(g(elem(i))) >= 0);
+
     // NULL events should appear in the suffix
     axiom(forall (j : integer) :: in_range(j) ==> (
         (p1(elem(j)) != NULL) ==> (forall (i : integer) :: in_range(i) ==> 
@@ -73,8 +77,24 @@ module main {
         ==> i < j
     ));
 
-    // FIXME: for every downstream invocation, there needs to be
-    // an upstream trigger.
+    // STARTUP only appears once.
+    axiom(forall (i : integer) :: (p1(elem(i)) == STARTUP && in_range(i))
+        ==> !(exists (j : integer) :: p1(elem(j)) == STARTUP
+            && i < j));
+
+    // Triggers appear before reactions at the same logical time.
+    axiom(forall (j : integer) :: (p1(elem(j)) == A1 && in_range(j))
+        ==> (exists (i : integer) :: p1(elem(i)) == STARTUP
+            && tag_same(g(elem(i)), g(elem(j)))
+            && i < j));
+    axiom(forall (j : integer) :: (p1(elem(j)) == B1 && in_range(j))
+        ==> (exists (i : integer) :: p1(elem(i)) == B_in
+            && tag_same(g(elem(i)), g(elem(j)))
+            && i < j));
+    axiom(forall (j : integer) :: (p1(elem(j)) == C1 && in_range(j))
+        ==> (exists (i : integer) :: p1(elem(i)) == C_in
+            && tag_same(g(elem(i)), g(elem(j)))
+            && i < j));
 
     // Element helper that shortens property
     define elem(i : integer) : element_t
@@ -115,12 +135,11 @@ module main {
     define phi_4(e : element_t) : boolean
     = p1(e) == B1;
 
-    // FIXME: how to add env assumption?
     define phi_5p(e : element_t) : boolean
     = exists (_i : integer) :: in_range(_i)
         && p1(elem(_i)) == B_ramp_exists
         && val(elem(_i)) == true
-        && g(elem(_i)) == g(e);
+        && !tag_later(g(elem(_i)), g(e));
     // Contract does not care about ramp.
     // If uncommented, we expect a valid refinement.
     /*
@@ -194,6 +213,17 @@ module main {
         && p1(elem(x)) == C_s
         && val(elem(x)) == true;
 
+    define Revised_sys_spec() : boolean
+    = (!tag_earlier(g(elem(0)), zero())
+        && p1(elem(0)) == B_ramp_exists
+        && val(elem(0)) == true)
+        ==> (
+        exists (y : integer) :: in_range(y)
+        && !tag_earlier(g(elem(y)), g(elem(0)))
+        && p1(elem(y)) == C_s
+        && val(elem(y)) == true
+        );
+
     define G1() : boolean
     = exists (v : integer) :: phi_0(elem(v));
 
@@ -201,7 +231,7 @@ module main {
     = forall (_u : integer) :: in_range(_u) ==> 
         (((phi_0(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
-            && tag_same(g(elem(_v)), g(elem(_u))) // FIXME: why doesn't tag_same work?? Ans: G1() was defined in a strange way.
+            && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_1(elem(_v))
             )) 
         && (phi_1(elem(_u)) ==> phi_2(elem(_u))) 
@@ -241,7 +271,8 @@ module main {
     (
         G1() && G2() && G3() && G4() && G5() && G6()
     )
-    ==> Sys_spec(); 
+    // ==> Sys_spec();
+    ==> Revised_sys_spec(); 
 
     control {
         v = unroll(0);
