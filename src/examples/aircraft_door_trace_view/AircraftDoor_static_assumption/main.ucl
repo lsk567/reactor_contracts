@@ -201,17 +201,30 @@ module main {
     /*************************
      * System-Level Contract *
      *************************/
+    // To make the assumption portable across
+    // multiple levels, we need to identify
+    // the "inputs" of the reactor and have
+    // the assumption precede these inputs.
+    // In this case, we can treat the startup
+    // action as an input, and specify that
+    // the ramp exists before then. Because
+    // startup is part of the "interface" of
+    // this reactor, we can directly take this
+    // to the upper level.
     define Sys_A() : boolean
-    = phi_5p(elem(0));
+    = exists (i : integer) :: in_range(i)
+    && phi_0(elem(i)) // This is a startup.
+    && phi_5p(elem(i));
 
     define Relaxed_sys_A() : boolean
     = true;
 
     define Sys_G() : boolean
-    = exists (x : integer) :: in_range(x)
+    = (exists (x : integer) :: in_range(x)
         && !tag_earlier(g(elem(x)), zero())
         && p1(elem(x)) == C_s
-        && val(elem(x)) == true;
+        && val(elem(x)) == true)
+        || !Sys_A();
 
     define Relaxed_sys_G() : boolean
     = (!tag_earlier(g(elem(0)), zero())
@@ -230,25 +243,28 @@ module main {
     define _A1() : boolean
     = true;
     define G1() : boolean
-    = exists (v : integer) :: phi_0(elem(v));
+    = (exists (v : integer) :: phi_0(elem(v)))
+        || !_A1();
 
     define A2() : boolean
     = phi_2p(elem(0));
     define G2() : boolean
-    = forall (_u : integer) :: in_range(_u) ==> 
+    = (forall (_u : integer) :: in_range(_u) ==> 
         (((phi_0(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_1(elem(_v))
             )) 
         && (phi_1(elem(_u)) ==> phi_2q(elem(_u))) 
-    );
+    ))
+        || !A2();
 
     define A3() : boolean
     = true;
     define G3() : boolean
-    = forall (u : integer) :: in_range(u) ==>
-        (phi_3(elem(u)));
+    = (forall (u : integer) :: in_range(u) ==>
+        (phi_3(elem(u))))
+        || !A3();
 
     // Moving the precondition of reaction to A.
     // FIXME: Verify that this is okay.
@@ -263,33 +279,41 @@ module main {
     //        
     //        A: exists (i : integer) :: phi(elem(i)) == true
     //        G: forall (i : integer) :: (phi(elem(i)) == true) ==> do_something
+    // Resolution: We don't want to make the assumption dynamic
+    //             because in the system-level guarantee we need
+    //             to say something about the internal invocation
+    //             (e.g. ramp_exists should happen at the same
+    //             logical time as C_s.).
     define A4() : boolean
     = phi_5p(elem(0));
     define G4() : boolean
-    = forall (_u : integer) :: in_range(_u) ==> 
+    = (forall (_u : integer) :: in_range(_u) ==> 
         (((phi_6(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_4(elem(_v)))) 
         && (phi_4(elem(_u)) ==> phi_5q(elem(_u))) 
-    );
+    ))
+        || !A4();
 
     define A5() : boolean
     = true;
     define G5() : boolean
-    = forall (u : integer) :: in_range(u) ==>
-        (phi_7(elem(u)));
+    = (forall (u : integer) :: in_range(u) ==>
+        (phi_7(elem(u))))
+        || !A5();
 
     define A6() : boolean
     = phi_9p(elem(0));
     define G6() : boolean
-    = forall (_u : integer) :: in_range(_u) ==> 
+    = (forall (_u : integer) :: in_range(_u) ==> 
         (((phi_10(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_8(elem(_v)))) 
         && (phi_8(elem(_u)) ==> phi_9q(elem(_u))) 
-    );
+    ))
+        || !A6();
 
     /***************************************
      * Verification by Checking Refinement *
