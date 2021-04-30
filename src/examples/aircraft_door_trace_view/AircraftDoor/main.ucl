@@ -250,6 +250,19 @@ module main {
     = forall (u : integer) :: in_range(u) ==>
         (phi_3(elem(u)));
 
+    // Moving the precondition of reaction to A.
+    // FIXME: Verify that this is okay.
+    // FIXME: Seems to suggest that this way of writing assumptions
+    //        is only sound for static environments.
+    //        The following might be hard to express:
+    //        Assuming an element in the trace satisfies phi,
+    //        the component makes a guarantee that refers to
+    //        that element in the assumption.
+    //        For example, the assumption can say "the component
+    //        satisfies the guarantee WHEN certain predicate phi is true."
+    //        
+    //        A: exists (i : integer) :: phi(elem(i)) == true
+    //        G: forall (i : integer) :: (phi(elem(i)) == true) ==> do_something
     define A4() : boolean
     = phi_5p(elem(0));
     define G4() : boolean
