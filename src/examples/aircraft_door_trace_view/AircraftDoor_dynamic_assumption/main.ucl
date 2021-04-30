@@ -216,6 +216,11 @@ module main {
     && phi_0(elem(i)) // This is a startup.
     && phi_5p(elem(i));
 
+    /*
+    define Sys_A() : boolean
+    = true;
+    */
+
     define Relaxed_sys_A() : boolean
     = true;
 
@@ -225,6 +230,19 @@ module main {
         && p1(elem(x)) == C_s
         && val(elem(x)) == true)
         || !Sys_A();
+
+    /*
+    define Sys_G() : boolean
+    = (forall (x : integer) :: in_range(x)
+        ==> (!tag_earlier(g(elem(x)), zero())
+            && p1(elem(x)) == B_ramp_exists
+            && val(elem(x)) == true)
+        ==> (exists (y : integer) :: in_range(y)
+            && tag_same(g(elem(y)), g(elem(x)))
+            && p1(elem(y)) == C_s
+            && val(elem(y)) == true))
+        || !Sys_A();
+    */
 
     define Relaxed_sys_G() : boolean
     = (!tag_earlier(g(elem(0)), zero())
@@ -243,29 +261,28 @@ module main {
     define _A1() : boolean
     = true;
     define G1() : boolean
-    = (exists (v : integer) :: phi_0(elem(v)))
-        || !_A1();
+    = exists (v : integer) :: phi_0(elem(v))
+        || !_A1(); // Saturation
 
     define A2() : boolean
-    = phi_2p(elem(0));
+    = exists (i : integer) :: in_range(i) && phi_2p(elem(i));
     define G2() : boolean
-    = (forall (_u : integer) :: in_range(_u) ==> 
+    = forall (_u : integer) :: in_range(_u) ==> 
         (((phi_0(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_1(elem(_v))
             )) 
-        // && (phi_1(elem(_u)) ==> phi_2q(elem(_u))) 
         && (phi_1(elem(_u)) ==> phi_2p(elem(_u)) ==> phi_2q(elem(_u))) 
-    ))
-        || !A2();
+    )
+        || !A2(); // Saturation
 
     define A3() : boolean
     = true;
     define G3() : boolean
-    = (forall (u : integer) :: in_range(u) ==>
-        (phi_3(elem(u))))
-        || !A3();
+    = forall (u : integer) :: in_range(u) ==>
+        (phi_3(elem(u)))
+        || !A3(); // Saturation
 
     // Moving the precondition of reaction to A.
     // FIXME: Verify that this is okay.
@@ -280,43 +297,60 @@ module main {
     //        
     //        A: exists (i : integer) :: phi(elem(i)) == true
     //        G: forall (i : integer) :: (phi(elem(i)) == true) ==> do_something
-    // Resolution: We don't want to make the assumption dynamic
-    //             because in the system-level guarantee we need
-    //             to say something about the internal invocation
-    //             (e.g. ramp_exists should happen at the same
-    //             logical time as C_s.).
+    //
+    // Question: 1. When we change from trivial assumption to non-trivial
+    //           by moving some implications out of the guarantees,
+    //           how do we ensure that it is sound (i.e. we do not
+    //           change the saturated contract). Why can't we change
+    //           the contract? By constraining the assumption (from
+    //           true to existential clause), does that impact the
+    //           soundness of the contract in any way?
+    //           2. Even the pre-condition does not hold, we want
+    //           the triggering mechanism to hold. So we want to use
+    //           the trivial case. We know that the trivial case is correct?
+    //
+    // Crucial observation: By making component-level assumption true,
+    // we make it the easiest to prove refinement. So do we want to
+    // just use the trivial assumptions?
+    //
+    // Resolution: For design, we want our contract to remain as abstract
+    // as possible so that we want as many options as possible in the
+    // design process. However, for verification, our goal is to simply
+    // check that the implementation satisfies the system-level contract.
+    // We do not need to prove anything that is more abstract than the
+    // level of our implementation. Therefore, contracts with trivial
+    // assumptions are enough for the components.
     define A4() : boolean
-    = phi_5p(elem(0));
+    = exists (i : integer) :: in_range(i) && phi_5p(elem(i));
+    // = true (unconstrained)
     define G4() : boolean
-    = (forall (_u : integer) :: in_range(_u) ==> 
+    = forall (_u : integer) :: in_range(_u) ==> 
         (((phi_6(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_4(elem(_v)))) 
-        // && (phi_4(elem(_u)) ==> phi_5q(elem(_u))) 
         && (phi_4(elem(_u)) ==> phi_5p(elem(_u)) ==> phi_5q(elem(_u))) 
-    ))
-        || !A4();
+    )
+        || !A4(); // Saturation
 
     define A5() : boolean
     = true;
     define G5() : boolean
-    = (forall (u : integer) :: in_range(u) ==>
-        (phi_7(elem(u))))
-        || !A5();
+    = forall (u : integer) :: in_range(u) ==>
+        (phi_7(elem(u)))
+        || !A5(); // Saturation
 
     define A6() : boolean
-    = phi_9p(elem(0));
+    = exists (i : integer) :: in_range(i) && phi_9p(elem(i));
     define G6() : boolean
-    = (forall (_u : integer) :: in_range(_u) ==> 
+    = forall (_u : integer) :: in_range(_u) ==> 
         (((phi_10(elem(_u))) ==> (exists (_v : integer) ::
             in_range(_v)
             && tag_same(g(elem(_v)), g(elem(_u)))
             && phi_8(elem(_v)))) 
-        // && (phi_8(elem(_u)) ==> phi_9q(elem(_u))) 
         && (phi_8(elem(_u)) ==> phi_9p(elem(_u)) ==> phi_9q(elem(_u))) 
-    ))
-        || !A6();
+    )
+        || !A6(); // Saturation
 
     /***************************************
      * Verification by Checking Refinement *
