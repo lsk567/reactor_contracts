@@ -1,0 +1,161 @@
+
+module common {
+
+    /*************************************
+     * Time tag-related types and macros *
+     *************************************/
+    type time_value_t = integer;
+    type time_unit_t = enum { INF, SEC, MSEC };
+    type time_t = {
+        time_value_t,
+        time_unit_t
+    };
+
+    type timestamp_t = time_t;
+    type microstep_t = integer;
+    type tag_t = {
+        timestamp_t,
+        microstep_t
+    };
+    type interval_t  = tag_t;
+
+    // Projection macros
+    define pi1(t : tag_t)   : timestamp_t   = t._1;         // Get timestamp from tag
+    define pi2(t : tag_t)   : microstep_t   = t._2;         // Get microstep from tag
+    define pi3(t : time_t)  : time_value_t  = t._1;       // Get time value from time
+    define pi4(t : time_t)  : time_unit_t   = t._2;        // Get time unit from time
+    define pi5(t : tag_t)   : time_value_t  = pi3(pi1(t)); // Get time value from tag
+    define pi6(t : tag_t)   : time_unit_t   = pi4(pi1(t));  // Get time unit from tag
+
+    // Convert to MSEC when the unit is SEC. If the unit is INF or MSEC (base),
+    // use the original value.
+    define base_time(t : time_t) : time_t
+    = if (pi4(t) == SEC) then {pi3(t) * 1000, MSEC} else t;
+
+    define base_tag(t : tag_t) : tag_t
+    = { base_time(pi1(t)), pi2(t) };
+
+    define base_unit() : time_unit_t
+    = MSEC;
+
+    // Interval constructor
+    define zero() : interval_t
+    = {{0, base_unit()}, 0};
+    define mstep() : interval_t
+    = {{0, base_unit()}, 1};
+    define msec(t : integer) : interval_t
+    = {{t, MSEC}, 0};
+    define sec(t : integer) : interval_t
+    = {{t, SEC}, 0};
+    define inf() : interval_t
+    = {{0, INF}, 0};
+
+    // Helper function
+    define isInf(i : interval_t) : boolean
+    = pi6(i) == INF;
+
+    // Tag comparison
+    // FIXME: currently all tags are assumed to be MSEC.
+    // Need to project to MSEC.
+    define tag_later(t1 : tag_t, t2 : tag_t) : boolean
+    = if (pi5(base_tag(t1)) > pi5(base_tag(t2))
+        || (pi5(base_tag(t1)) == pi5(base_tag(t2)) && pi2(t1) > pi2(t2))
+        || (isInf(t1) && !isInf(t2)))
+        then true else false;
+
+    define tag_same(t1 : tag_t, t2 : tag_t) : boolean
+    = if (base_tag(t1) == base_tag(t2)
+        ) then true else false;
+
+    define tag_earlier(t1 : tag_t, t2 : tag_t) : boolean
+    = !tag_later(t1, t2) && !tag_same(t1, t2);
+
+    // Tag algebra
+    define tag_schedule(t : tag_t, i : interval_t) : tag_t
+    = if (!isInf(t) && pi5(i) == 0 && !isInf(i)) then { { pi5(base_tag(t)), base_unit() }, pi2(t) + 1 } else (  // microstep delay
+        if (!isInf(t) && pi5(i) > 0 && !isInf(i)) then { { pi5(base_tag(t)) + pi5(base_tag(i)), base_unit() }, 0 } else inf());
+
+    define tag_delay(t : tag_t, i : interval_t) : tag_t
+    = if (!isInf(t) && !isInf(i)) then { { pi5(base_tag(t)) + pi5(base_tag(i)), base_unit() }, pi2(t) + pi2(i) } else inf();
+
+    // Only consider timestamp for now.
+    define tag_diff(t1, t2: tag_t) : interval_t
+    = if (!isInf(t1) && !isInf(t2)) then { { pi5(t1) - pi5(t2), base_unit() }, pi2(t1) - pi2(t2) } else inf();
+
+    /**********************************
+     * Reactions & connectivity graph *
+     **********************************/
+    /* Application specific */
+    //////////////////////////
+    // Reaction / variable / port / action IDs
+    type id_t = enum {  
+        NULL,                           // NULL 
+        Door1_STARTUP, Door2_STARTUP,   // Actions
+        Door1_C_s, Door2_C_s,           // Variables
+        RampExists                      // Variables
+    };
+
+    //////////////////////////
+
+    /*****************
+     * Trace Element *
+     *****************/
+    type value_t = boolean;
+    type element_t = { id_t, value_t, tag_t };
+
+    // Projection macros
+    define p1(e : element_t) : id_t     = e._1;
+    define p2(e : element_t) : value_t  = e._2;
+    define p3(e : element_t) : tag_t    = e._3;
+    define val(e : element_t) : value_t = p2(e);
+    define g(e : element_t) : tag_t     = p3(e);
+
+    /**********************************
+     * Combined Trace & Trace Element *
+     **********************************/
+    const START : integer = 0;
+    const END : integer = 9;
+
+    define in_range(num : integer) : boolean
+    = num >= START && num <= END;
+
+    type step_t = integer;
+    type trace_t = { 
+        element_t,
+        element_t,
+        element_t,
+        element_t,
+        element_t,
+        element_t,
+        element_t,
+        element_t,
+        element_t,
+        element_t
+    };
+
+    define get(tr : trace_t, i : step_t) : element_t 
+    = if (i == 0) then tr._1 else (
+        if (i == 1) then tr._2 else (
+            if (i == 2) then tr._3 else (
+                if (i == 3) then tr._4 else (
+                    if (i == 4) then tr._5 else (
+                        if (i == 5) then tr._6 else (
+                            if (i == 6) then tr._7 else (
+                                if (i == 7) then tr._8 else (
+                                    if (i == 8) then tr._9 else (
+                                        if (i == 9) then tr._10 else (
+                                            { NULL, false, inf() }
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    );
+
+    define in_trace(_tr : trace_t, _e : element_t) : boolean
+    = (exists (j : step_t) :: in_range(j) && get(_tr, j) == _e);
+}

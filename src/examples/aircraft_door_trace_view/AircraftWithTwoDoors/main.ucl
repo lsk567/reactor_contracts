@@ -1,0 +1,120 @@
+/**
+ * The assumptions on the environment are assumed to be static
+ * and hold since the beginning of the trace. In some sense,
+ * we can interpret it as static environment.
+ */
+module main {
+    
+    type    * = common.*;
+    define  * = common.*;
+    const   * = common.*;
+
+    // Trace declaration and axioms
+    var trace : trace_t;
+
+    // Environment variables
+    var goodWeather : boolean;
+
+    // Display trace in timestamp order
+    axiom(forall (i, j : integer) :: (i < j && in_range(i) && in_range(j)) 
+        ==> (tag_earlier(g(elem(i)), g(elem(j)))
+            || tag_same(g(elem(i)), g(elem(j)))));
+
+    // All microsteps are non-negative
+    axiom(forall (i : integer) :: in_range(i)
+        ==> pi2(g(elem(i))) >= 0);
+
+    // NULL events should appear in the suffix
+    axiom(forall (j : integer) :: in_range(j) ==> (
+        (p1(elem(j)) != NULL) ==> (forall (i : integer) :: in_range(i) ==> 
+        ((i < j) ==> p1(elem(i)) != NULL)
+    )));
+
+    // All tags should be positive
+    axiom(forall (i : integer) :: in_range(i) ==> (
+        !tag_earlier(g(elem(i)), zero())
+    ));
+
+    // STARTUP only appears once.
+    axiom(forall (i : integer) :: (p1(elem(i)) == Door1_STARTUP && in_range(i))
+        ==> !(exists (j : integer) :: p1(elem(j)) == Door1_STARTUP
+            && i < j));
+    axiom(forall (i : integer) :: (p1(elem(i)) == Door2_STARTUP && in_range(i))
+        ==> !(exists (j : integer) :: p1(elem(j)) == Door2_STARTUP
+            && i < j));
+
+    // Element helper that shortens property
+    define elem(i : integer) : element_t
+    = get(trace, i);
+
+    // Helper predicates
+    define phi_0(e : element_t) : boolean
+    = exists (_i : integer) :: in_range(_i)
+        && p1(elem(_i)) == RampExists
+        && val(elem(_i)) == true
+        && !tag_later(g(elem(_i)), g(e));
+
+    /*************************
+     * System-Level Contract *
+     *************************/
+    define Sys_A() : boolean
+    = phi_0(elem(0))
+        && goodWeather;
+
+    define Sys_G() : boolean
+    = exists (x, y : integer) :: in_range(x)
+        && !tag_earlier(g(elem(x)), zero())
+        && p1(elem(x)) == Door1_C_s
+        && val(elem(x)) == true
+        && in_range(y)
+        && !tag_earlier(g(elem(y)), zero())
+        && p1(elem(y)) == Door2_C_s
+        && val(elem(y)) == true;
+
+    /*****************************
+     * Component-level Contracts *
+     *****************************/
+    define Door1_A() : boolean
+    = phi_0(elem(0));
+
+    define Door1_G() : boolean
+    = exists (x : integer) :: in_range(x)
+        && !tag_earlier(g(elem(x)), zero())
+        && p1(elem(x)) == Door1_C_s
+        && val(elem(x)) == true;
+
+    define Door2_A() : boolean
+    = phi_0(elem(0));
+
+    define Door2_G() : boolean
+    = exists (x : integer) :: in_range(x)
+        && !tag_earlier(g(elem(x)), zero())
+        && p1(elem(x)) == Door2_C_s
+        && val(elem(x)) == true;
+
+    /***************************************
+     * Verification by Checking Refinement *
+     ***************************************/
+    define _refine_A() : boolean = 
+    Sys_A() ==>
+    (
+        Door1_A() && Door2_A()
+    );
+
+    define _refine_G() : boolean =
+    (
+        Door1_G() && Door2_G()
+    )
+    ==> Sys_G();
+
+    property refine_A : _refine_A();
+    property refine_G : _refine_G();
+    property refine_C : _refine_A() && _refine_G();
+
+    control {
+        v = unroll(0);
+        check;
+        print_results;
+        v.print_cex;
+    }
+}
