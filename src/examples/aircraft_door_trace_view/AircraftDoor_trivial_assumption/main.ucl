@@ -201,32 +201,10 @@ module main {
     /*************************
      * System-Level Contract *
      *************************/
-    // To make the assumption portable across
-    // multiple levels, we need to identify
-    // the "inputs" of the reactor and have
-    // the assumption precede these inputs.
-    // In this case, we can treat the startup
-    // action as an input, and specify that
-    // the ramp exists before then. Because
-    // startup is part of the "interface" of
-    // this reactor, we can directly take this
-    // to the upper level.
     define Sys_A() : boolean
-    = exists (i : integer) :: in_range(i)
-    && phi_0(elem(i)) // This is a startup.
-    && phi_5p(elem(i));
-
-    define Relaxed_sys_A() : boolean
     = true;
 
     define Sys_G() : boolean
-    = (exists (x : integer) :: in_range(x)
-        && !tag_earlier(g(elem(x)), zero())
-        && p1(elem(x)) == C_s
-        && val(elem(x)) == true)
-        || !Sys_A();
-
-    define Relaxed_sys_G() : boolean
     = (!tag_earlier(g(elem(0)), zero())
         && p1(elem(0)) == B_ramp_exists
         && val(elem(0)) == true)
@@ -235,7 +213,8 @@ module main {
         && !tag_earlier(g(elem(y)), g(elem(0)))
         && p1(elem(y)) == C_s
         && val(elem(y)) == true
-        );
+        )
+        || !Sys_A();
 
     /*****************************
      * Component-level Contracts *
@@ -263,19 +242,6 @@ module main {
     = forall (u : integer) :: in_range(u) ==>
         (phi_3(elem(u)));
 
-    // Moving the precondition of reaction to A.
-    // FIXME: Verify that this is okay.
-    // FIXME: Seems to suggest that this way of writing assumptions
-    //        is only sound for static environments.
-    //        The following might be hard to express:
-    //        Assuming an element in the trace satisfies phi,
-    //        the component makes a guarantee that refers to
-    //        that element in the assumption.
-    //        For example, the assumption can say "the component
-    //        satisfies the guarantee WHEN certain predicate phi is true."
-    //        
-    //        A: exists (i : integer) :: phi(elem(i)) == true
-    //        G: forall (i : integer) :: (phi(elem(i)) == true) ==> do_something
     define A4() : boolean
     = true;
     define G4() : boolean
@@ -309,10 +275,6 @@ module main {
      ***************************************/
     define _refine_A() : boolean = 
     Sys_A() ==>
-    // Since Sys_A is more demanding,
-    // using Relaxed_sys_A might not imply the composed A.
-    // Try by commenting out Sys_A and uncommenting the following:
-    // Relaxed_sys_A() ==>
     (
         _A1() && A2() && A3() && A4() && A5() && A6()
     );
@@ -322,10 +284,6 @@ module main {
         G1() && G2() && G3() && G4() && G5() && G6()
     )
     ==> Sys_G();
-    // Since Sys_spec is more demanding,
-    // the composed G must also satisfy Relaxed_sys_spec.
-    // Try by commenting out Sys_G uncommenting the following:
-    // ==> Relaxed_sys_G(); 
 
     property refine_A : _refine_A();
     property refine_G : _refine_G();
