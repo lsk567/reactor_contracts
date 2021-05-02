@@ -47,6 +47,12 @@ module main {
     define elem(i : integer) : element_t
     = get(trace, i);
 
+    // Helper predicates
+    define phi_0(e : element_t) : boolean
+    = p1(e) == Door1_STARTUP && tag_same(g(e), zero()); 
+
+    define phi_1(e : element_t) : boolean
+    = p1(e) == Door2_STARTUP && tag_same(g(e), zero()); 
 
     /*************************
      * System-Level Contract *
@@ -54,24 +60,30 @@ module main {
     define Sys_A() : boolean
     = true;
 
+    // Given that both ramp exists, at startup, the door eventually opens.
+    // LTL: ramp_exists ==> F(Door1_C_s && Door2_C_s)
     define Sys_G() : boolean
-    = (!tag_earlier(g(elem(0)), zero())
-        && p1(elem(0)) == Door1_B_ramp_exists
-        && val(elem(0)) == true
-        && !tag_earlier(g(elem(1)), zero())
-        && p1(elem(1)) == Door2_B_ramp_exists
-        && val(elem(1)) == true
+    = forall (x1, x2, z1, z2 : integer) :: (
+        in_range(x1) && in_range(x2) && in_range(z1) && in_range(z2)
+        && !tag_later(g(elem(x1)), g(elem(z1))) // No later than STARTUP
+        && !tag_later(g(elem(x2)), g(elem(z2))) // No later than STARTUP
+        && p1(elem(x1)) == Door1_B_ramp_exists
+        && p1(elem(x2)) == Door2_B_ramp_exists
+        && val(elem(x1)) == true
+        && val(elem(x2)) == true
+        && phi_0(elem(z1))
+        && phi_1(elem(z2))
         )
-        ==> (exists (x, y : integer) :: in_range(x)
-        && !tag_earlier(g(elem(x)), zero())
-        && p1(elem(x)) == Door1_C_s
-        && val(elem(x)) == true
-        && in_range(y)
-        && !tag_earlier(g(elem(y)), zero())
-        && p1(elem(y)) == Door2_C_s
-        && val(elem(y)) == true)
+        ==> (exists (y1, y2 : integer) :: (
+        in_range(y1) && in_range(y2)
+        && !tag_earlier(g(elem(y1)), g(elem(x1)))
+        && !tag_earlier(g(elem(y2)), g(elem(x2)))
+        && p1(elem(y1)) == Door1_C_s
+        && p1(elem(y2)) == Door2_C_s
+        && val(elem(y1)) == true
+        && val(elem(y2)) == true
+        ))
         || !Sys_A();
-
 
     /*****************************
      * Component-level Contracts *
@@ -80,31 +92,38 @@ module main {
     = true;
 
     define Door1_G() : boolean
-    = (!tag_earlier(g(elem(0)), zero())
-        && p1(elem(0)) == Door1_B_ramp_exists
-        && val(elem(0)) == true)
-        ==> (
-        exists (y : integer) :: in_range(y)
-        && !tag_earlier(g(elem(y)), g(elem(0)))
+    = forall (x, z : integer) :: (
+        in_range(x) && in_range(z)
+        && !tag_later(g(elem(x)), g(elem(z))) // No later than STARTUP
+        && p1(elem(x)) == Door1_B_ramp_exists
+        && val(elem(x)) == true
+        && phi_0(elem(z))
+        )
+        ==> (exists (y : integer) :: (
+        in_range(y)
+        && !tag_earlier(g(elem(y)), g(elem(x)))
         && p1(elem(y)) == Door1_C_s
         && val(elem(y)) == true
-        )
+        ))
         || !Door1_A();
-
 
     define Door2_A() : boolean
     = true;
 
     define Door2_G() : boolean
-    = (!tag_earlier(g(elem(1)), zero())
-        && p1(elem(1)) == Door2_B_ramp_exists
-        && val(elem(1)) == true)
-        ==> (
-        exists (y : integer) :: in_range(y)
-        && !tag_earlier(g(elem(y)), g(elem(0)))
+    = forall (x, z : integer) :: (
+        in_range(x) && in_range(z)
+        && !tag_later(g(elem(x)), g(elem(z))) // No later than STARTUP
+        && p1(elem(x)) == Door2_B_ramp_exists
+        && val(elem(x)) == true
+        && phi_0(elem(z))
+        )
+        ==> (exists (y : integer) :: (
+        in_range(y)
+        && !tag_earlier(g(elem(y)), g(elem(x)))
         && p1(elem(y)) == Door2_C_s
         && val(elem(y)) == true
-        )
+        ))
         || !Door2_A();
 
     /***************************************
