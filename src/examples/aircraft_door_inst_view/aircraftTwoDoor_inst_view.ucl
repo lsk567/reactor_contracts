@@ -127,8 +127,8 @@ module aircraft_door {
     //define A() : boolean = ramp;
     //define G() : boolean = (start) ==> (ret);
     // Expected valid
-    define A() : boolean = ramp;
-    define G() : boolean = (tag_1 == 0 && tag_2 == 0) ==> (ret);
+    define A() : boolean = true;
+    define G() : boolean = ((tag_1 == 0 && tag_2 == 0) && ramp) ==> (ret);
     init {
     }
 
@@ -162,17 +162,18 @@ module aircraft_door {
 
 module aircraft {
 //aircraft that has two doors.
-    var tag1: integer;
-    var tag2: integer;
+    input tag1: integer;
+    input tag2: integer;
     var start1 : boolean;
     var start2 : boolean;
     var door1  : boolean;
     var door2  : boolean;
-    var ramp  : boolean;
+    input ramp1  : boolean;
+    input ramp2  : boolean;
 
 
-    instance aircraft_door1: aircraft_door(tag_1: (tag1), tag_2 :(tag2), start: (start1), ramp: (ramp), ret: (door1));
-    instance aircraft_door2: aircraft_door(tag_1: (tag1), tag_2 :(tag2), start: (start2), ramp: (ramp), ret: (door2));
+    instance aircraft_door1: aircraft_door(tag_1: (tag1), tag_2 :(tag2), start: (start1), ramp: (ramp1), ret: (door1));
+    instance aircraft_door2: aircraft_door(tag_1: (tag1), tag_2 :(tag2), start: (start2), ramp: (ramp2), ret: (door2));
     
     next {
         next(aircraft_door1);
@@ -182,8 +183,13 @@ module aircraft {
     //define A() : boolean = true;
     //define G() : boolean = (tag1==0 && tag2==0) ==> (door1 && door2);
 
+
+    // Expected invalid
+    //define A() : boolean = ramp1;
+    //define G() : boolean = (tag1==0 && tag2==0) ==> (door1 && door2);
+
     // Expected valid
-    define A() : boolean = ramp;
+    define A() : boolean = ramp1 && ramp2;
     define G() : boolean = (tag1==0 && tag2==0) ==> (door1 && door2);
 
     contract C : assume_guarantee((A()), (G()));

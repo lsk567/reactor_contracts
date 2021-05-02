@@ -1,60 +1,39 @@
-module m1 {
+// This exapmle shows a problem in checking the environment.
+// When we compose inv and mux to get a composed conract
+// From the semantic of composition, if we provide an environment that 
+// all environment of two components are satisfied (either from our provided enviroment or 
+// through the guarantee of the other component, we guarantee both componenets' behavior) 
+// But we don't have "any constraints" on the environment where only one holds.
+// In this case we should still able to say that one guarantee holds.
+
+// High-Level thought: The accpetable environment is too strict for composition?
+// We should allow partial guarantees for certain environments
+// : Given (E1 and !E2), we should still achieve G1?
+// Revise Contract Composition semantic? Maybe we need to specify that the composed component's 
+// partial behaviors under the partial environments
+
+// Second thought: maybe we will need a new operator that equivalent to operator-(C1, C2) = 
+// A: (A1 or A2), G: (A1 ==> G1) and (G2 ==> G2)
+// The composition now becomes (A: A1 and A2 or !G1 or !G2, G: G1 and G2) - (A1, G1) - (A2, G2)
+module inv {
     
     input a : integer;
-    input b : integer;
-    output c: integer;
+    output b : integer;
 
     // Sub-formulas
-    define A(a : integer, b : integer, c: integer) : boolean
-    = true;
-    define G(a : integer, b : integer, c: integer) : boolean
-    = c == a + b;
-
+    define A() : boolean
+    = (a != 0);
+    define G() : boolean
+    = (b == 1 / a);
     init {
-        c = a + b;
+        b = 1 / a;
     }
 
     next {
-        c' = a' + b';
+        b' = 1 / a';
     }
 
-    contract C : assume_guarantee((A(a, b, c)), (G(a, b, c)));
-    // Need a pass to transpile into the following:
-    // property C : A(a, b) ==> G(a, b);
-
-    control {
-        print_module;
-        v = ag[contracts=[C]];
-        //prove_by_contracts;
-        //v = induction;
-
-        check;
-        print_results;
-        v.print_cex;
-    }
-}
-
-module m2 {
-    
-    input a : integer;
-    input b : integer;
-    output c : integer;
-
-    // Sub-formulas
-    define A(a : integer, b : integer, c: integer) : boolean
-    = true;
-    define G(a : integer, b : integer, c: integer) : boolean
-    = (b != 0) ==> (c == a / b);
-
-    init {
-        c = a / b;
-    }
-
-    next {
-        c' = a' / b';
-    }
-
-    contract C : assume_guarantee((A(a, b, c)), (G(a, b, c)));
+    contract C : assume_guarantee((A()), (G()));
     // Need a pass to transpile into the following:
     // property C : A(a, b) ==> G(a, b);
 
@@ -69,7 +48,7 @@ module m2 {
     }
 }
 
-module m3{
+module mux{
     input a : integer;
     input b : integer;
     output c: integer;
@@ -108,20 +87,18 @@ module m3{
     }
 }
 
-module M {
+module sys {
     
     input a : integer;
     input b : integer;
     input inst: boolean;
 
     var wire : integer;
-    var wire2 : integer;
 
     output ret: integer;
 
-    instance _m1 : m1(a : (a), b : (b), c: (wire));
-    instance _m2 : m2(a : (a), b : (b), c: (wire2));
-    instance _m3 : m3(a : (wire), b: (wire2), c: (ret), inst:(inst));
+    instance _inv : inv(a : (a), b: (wire));
+    instance _mux : mux(a : (wire), b: (a), c: (ret), inst:(inst));
 
     // Expected invalid.
     //define A() : boolean = true;
@@ -129,8 +106,8 @@ module M {
 
 
     // Expected valid!! false path problem!!
-    define A() : boolean = !(b == 0 && inst == false);
-    define G() : boolean = (inst ==> ret == a + b) && (!inst ==> ret == a / b);
+    define A() : boolean = !(a == 0 && inst == true);
+    define G() : boolean = (inst ==> ret == 1 / a) && (!inst ==> ret == a);
 
     // Expected valid
     //define A() : boolean = !(b == 0);
@@ -139,15 +116,9 @@ module M {
     init {
     }
 
-    // In order for the high-level module to respect contract
-    // composition, we need to restrict how it is written.
-    // For example, if only either of m1 and m2 steps, then
-    // the composition does not respect the semantics of
-    // contract composition.
     next {
-        next(_m1);
-        next(_m2);
-        next(_m3);
+        next(_inv);
+        next(_mux);
     }
 
     contract C : assume_guarantee((A()), (G()));
