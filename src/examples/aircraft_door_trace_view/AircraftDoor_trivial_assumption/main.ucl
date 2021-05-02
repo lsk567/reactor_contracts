@@ -2,6 +2,8 @@
  * The assumptions on the environment are assumed to be static
  * and hold since the beginning of the trace. In some sense,
  * we can interpret it as static environment.
+ *
+ * TODO: use happen before instead of comparing tags directly.
  */
 module main {
     
@@ -204,16 +206,28 @@ module main {
     define Sys_A() : boolean
     = true;
 
+    // If a ramp exists before the STARTUP action (not necessarily
+    // the first element in the trace), then at some point in the trace
+    // the door opens.
+    // po-LTL: B_ramp_exists ==> F(C_s);
+    // Not having G() does not mean B_ramp_exists holds at the first
+    // element of the trace! Just at the first instant in logical time.
+    // 
+    // How should the time modality be defined?
     define Sys_G() : boolean
-    = (!tag_earlier(g(elem(0)), zero())
-        && p1(elem(0)) == B_ramp_exists
-        && val(elem(0)) == true)
-        ==> (
-        exists (y : integer) :: in_range(y)
-        && !tag_earlier(g(elem(y)), g(elem(0)))
+    = forall (x, z : integer) :: (
+        in_range(x) && in_range(z)
+        && !tag_later(g(elem(x)), g(elem(z))) // No later than STARTUP
+        && p1(elem(x)) == B_ramp_exists
+        && val(elem(x)) == true
+        && phi_0(elem(z))
+        )
+        ==> (exists (y : integer) :: (
+        in_range(y)
+        && !tag_earlier(g(elem(y)), g(elem(x)))
         && p1(elem(y)) == C_s
         && val(elem(y)) == true
-        )
+        ))
         || !Sys_A();
 
     /*****************************
