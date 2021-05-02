@@ -47,50 +47,65 @@ module main {
     define elem(i : integer) : element_t
     = get(trace, i);
 
-    // Helper predicates
-    define phi_0(e : element_t) : boolean
-    = exists (_i : integer) :: in_range(_i)
-        && p1(elem(_i)) == RampExists
-        && val(elem(_i)) == true
-        && !tag_later(g(elem(_i)), g(e));
 
     /*************************
      * System-Level Contract *
      *************************/
     define Sys_A() : boolean
-    = phi_0(elem(0))
-        && goodWeather;
+    = true;
 
     define Sys_G() : boolean
-    = exists (x, y : integer) :: in_range(x)
+    = (!tag_earlier(g(elem(0)), zero())
+        && p1(elem(0)) == Door1_B_ramp_exists
+        && val(elem(0)) == true
+        && !tag_earlier(g(elem(1)), zero())
+        && p1(elem(1)) == Door2_B_ramp_exists
+        && val(elem(1)) == true
+        )
+        ==> (exists (x, y : integer) :: in_range(x)
         && !tag_earlier(g(elem(x)), zero())
         && p1(elem(x)) == Door1_C_s
         && val(elem(x)) == true
         && in_range(y)
         && !tag_earlier(g(elem(y)), zero())
         && p1(elem(y)) == Door2_C_s
-        && val(elem(y)) == true;
+        && val(elem(y)) == true)
+        || !Sys_A();
+
 
     /*****************************
      * Component-level Contracts *
      *****************************/
     define Door1_A() : boolean
-    = phi_0(elem(0));
+    = true;
 
     define Door1_G() : boolean
-    = exists (x : integer) :: in_range(x)
-        && !tag_earlier(g(elem(x)), zero())
-        && p1(elem(x)) == Door1_C_s
-        && val(elem(x)) == true;
+    = (!tag_earlier(g(elem(0)), zero())
+        && p1(elem(0)) == Door1_B_ramp_exists
+        && val(elem(0)) == true)
+        ==> (
+        exists (y : integer) :: in_range(y)
+        && !tag_earlier(g(elem(y)), g(elem(0)))
+        && p1(elem(y)) == Door1_C_s
+        && val(elem(y)) == true
+        )
+        || !Door1_A();
+
 
     define Door2_A() : boolean
-    = phi_0(elem(0));
+    = true;
 
     define Door2_G() : boolean
-    = exists (x : integer) :: in_range(x)
-        && !tag_earlier(g(elem(x)), zero())
-        && p1(elem(x)) == Door2_C_s
-        && val(elem(x)) == true;
+    = (!tag_earlier(g(elem(1)), zero())
+        && p1(elem(1)) == Door2_B_ramp_exists
+        && val(elem(1)) == true)
+        ==> (
+        exists (y : integer) :: in_range(y)
+        && !tag_earlier(g(elem(y)), g(elem(0)))
+        && p1(elem(y)) == Door2_C_s
+        && val(elem(y)) == true
+        )
+        || !Door2_A();
 
     /***************************************
      * Verification by Checking Refinement *

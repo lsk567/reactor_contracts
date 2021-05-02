@@ -89,10 +89,10 @@ module common {
     //////////////////////////
     // Reaction / variable / port / action IDs
     type id_t = enum {  
-        NULL,                           // NULL 
-        Door1_STARTUP, Door2_STARTUP,   // Actions
-        Door1_C_s, Door2_C_s,           // Variables
-        RampExists                      // Variables
+        NULL,                                       // NULL 
+        Door1_STARTUP, Door2_STARTUP,               // Actions
+        Door1_C_s, Door2_C_s,                       // Variables
+        Door1_B_ramp_exists, Door2_B_ramp_exists    // Variables
     };
 
     //////////////////////////
