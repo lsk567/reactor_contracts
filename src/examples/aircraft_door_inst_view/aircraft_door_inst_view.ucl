@@ -14,7 +14,8 @@ module Reaction_Controller {
     output out_value: boolean;
 
     define A() : boolean = true;
-    define G() : boolean = ((startup_trigger) ==> (out_present && out_value)) && (!(startup_trigger) ==> !(out_present));
+    define G() : boolean = ((startup_trigger) ==> 
+        (out_present && out_value)) && (!(startup_trigger) ==> !(out_present));
     contract C : assume_guarantee(A(), G());
 }
 
@@ -27,7 +28,8 @@ module Reaction_Vision {
     input ramp_exists: boolean;
 
     define A() : boolean = true;
-    define G() : boolean = ((in_trigger) ==> (ramp_exists ==> ((out_value == in_value) && out_present)));
+    define G() : boolean = ((in_trigger) ==> 
+        (ramp_exists ==> ((out_value == in_value) && out_present)));
     contract C : assume_guarantee(A(), G());    
 }
 
@@ -86,7 +88,7 @@ module Door_Inport {
     contract C : assume_guarantee(A(), G());
 }
 
-module M {
+module aircraft_door {
     
     input tag_1 : integer;
     input tag_2 : integer;
@@ -120,21 +122,16 @@ module M {
     instance reaction_Door : Reaction_Door(in_trigger : (door_in_present), in_value : (door_in_value), door_state: (ret));
 
     // Expected invalid
-    define A() : boolean = true;
-    define G() : boolean = (start) ==> (ret);
+    //define A() : boolean = true;
+    //define G() : boolean = (start) ==> (ret);
 
     // Expected valid
-    //define A() : boolean = ramp;
-    //define G() : boolean = (start) ==> (ret);
+    define A() : boolean = ramp;
+    define G() : boolean = (start) ==> (ret);
 
     init {
     }
 
-    // In order for the high-level module to respect contract
-    // composition, we need to restrict how it is written.
-    // For example, if only either of m1 and m2 steps, then
-    // the composition does not respect the semantics of
-    // contract composition.
     next {
         next(startup);
         next(reaction_Controller);
@@ -150,8 +147,7 @@ module M {
 
     control {
         print_module;
-        v = ag;
-        //v = induction;
+        v = ag_induction;
         check;
         print_results;
         v.print_cex;

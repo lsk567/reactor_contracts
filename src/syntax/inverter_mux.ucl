@@ -39,7 +39,7 @@ module inv {
 
     control {
         print_module;
-        v = ag;
+        v = ag_induction;
         //v = induction;
 
         check;
@@ -79,7 +79,7 @@ module mux{
 
     control{
         print_module;
-        v = ag;
+        v = ag_induction;
         //v = induction;
         check;
         print_results;
@@ -136,7 +136,7 @@ module sys {
 
     control {
         print_module;
-        v = ag;
+        v = ag_hierarchy;
         //v = induction;
         check;
         print_results;
