@@ -147,7 +147,7 @@ module aircraft_door {
 
     control {
         print_module;
-        v = ag_induction;
+        v = ag_hierarchy;
         check;
         print_results;
         v.print_cex;
