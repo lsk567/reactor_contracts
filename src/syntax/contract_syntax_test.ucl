@@ -10,11 +10,11 @@ module m1 {
     = b < 0;
 
     init {
-        b = a * -1;
+        b = a * 1;
     }
 
     next {
-        b' = a' * -1;
+        b' = a' * 1;
     }
 
     // The contract is transpiled into the following:
@@ -84,13 +84,14 @@ module M {
     // Expected invalid
     // define A() : boolean = a < 0;
     // define G() : boolean = b == -1 * a + 1;
-    define A() : boolean = b != 0;
-    define G() : boolean = b == 0;
+    //define A() : boolean = b != 0;
+    //define G() : boolean = b == 0;
+
 
     // Expected invalid.
     // Returns valid.
-    // define A() : boolean = a < 0;
-    // define G() : boolean = b == -1 * a;
+    define A() : boolean = a < 0;
+    define G() : boolean = b == -1 * a;
 
     init {
         wire = 0;
