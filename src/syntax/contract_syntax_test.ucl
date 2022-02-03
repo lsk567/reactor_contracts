@@ -7,7 +7,7 @@ module m1 {
     define A(a : integer, b : integer) : boolean
     = a < 0;
     define G(a : integer, b : integer) : boolean
-    = b < 0;
+    = b == 1 * a;
 
     init {
         b = a * 1;
@@ -68,30 +68,17 @@ module M {
     var wire : integer;
     var wire2 : integer;
 
+    // A1: a < 0, G1: b < 0
     instance _m1 : m1(a : (a), b : (wire));
-    instance _m2 : m2(a : (wire2), b : (b));
-
-    // Expected valid
-    // define A() : boolean = true;
-    // define G() : boolean = true;
-
-    // Expected invalid.
-    // FIXME: SMT prints assert false. Why?
-    // Because we are proving the base case, which is somwhow trivial.
-    // define A() : boolean = a < 0;
-    // define G() : boolean = b > 2;
-
-    // Expected invalid
-    // define A() : boolean = a < 0;
-    // define G() : boolean = b == -1 * a + 1;
-    //define A() : boolean = b != 0;
-    //define G() : boolean = b == 0;
-
+    // A2: true, G2: b == a + 1
+    instance _m2 : m2(a : (wire), b : (b));
+    // Composed A: (a < 0) && (true) || !(b < 0 && b == a + 1)
+    // Composed G: b < 0 && b == a + 1
 
     // Expected invalid.
     // Returns valid.
     define A() : boolean = a < 0;
-    define G() : boolean = b == -1 * a;
+    define G() : boolean = b == 1 * a + 1;
 
     init {
         wire = 0;
@@ -107,24 +94,14 @@ module M {
         next(_m2);
     }
 
-    // property test : (1 < (2 * 100) ==> false) && (false || true);
-
     contract C : assume_guarantee((A()), (G()));
-    // Two questions:
-    // 1. How to express composition of m1 and m2's contracts?
-    // define G_m1_m2() : boolean = (_m1.b > 0 && _m2.b == _m2.a + 1);
-    // define A_m1_m2() : boolean = ((_m1.a < 0) && (true)) || !G_m1_m2();
-    // define G_m1_m2() : boolean = (wire > 0 && b == wire + 1);
-    // define A_m1_m2() : boolean = ((a < 0) && (true)) || !G_m1_m2();
-
-    // 2. How to check the composed contract satisfy the system-level contract?
-    // property A_is_refinement : A() ==> A_m1_m2();
-    // property G_is_refinement : G_m1_m2() ==> G();
+    // How to check the composed contract satisfy the system-level contract?
+    // property A_is_refinement : A() ==> A_composed();
+    // property G_is_refinement : G_composed() ==> G();
 
     control {
         print_module;
         v = ag_hierarchy;
-        //v = induction;
         check;
         print_results;
         v.print_cex;
